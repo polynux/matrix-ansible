@@ -1,0 +1,6 @@
+matrix_domain: example.com
+element_domain: chat.example.com
+
+synapse_server_name: "{{ matrix_domain }}"
+synapse_report_stats: false
+

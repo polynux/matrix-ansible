@@ -1,0 +1,12 @@
+[debian]
+debian_host ansible_user=debian_user
+
+[almalinux]
+alma_host ansible_user=polynux
+
+[synapse:children]
+almalinux
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
+

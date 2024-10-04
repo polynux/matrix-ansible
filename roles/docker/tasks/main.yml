@@ -1,0 +1,81 @@
+---
+- name: Install dependencies (Debian)
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Install dependencies (RedHat)
+  dnf:
+    name:
+      - dnf-plugins-core
+      - python3-pip
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Add Docker GPG apt Key (Debian)
+  apt_key:
+    url: https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Add Docker Repository (Debian)
+  apt_repository:
+    repo: deb [arch={{ ansible_architecture }}] https://download.docker.com/linux/{{ ansible_distribution | lower }} {{ ansible_distribution_release }} stable
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Add Docker Repository (RedHat)
+  get_url:
+    url: https://download.docker.com/linux/centos/docker-ce.repo
+    dest: /etc/yum.repos.d/docker-ce.repo
+  when: ansible_os_family == "RedHat"
+
+- name: Install Docker (Debian)
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Install Docker (RedHat)
+  dnf:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+  when: ansible_os_family == "RedHat"
+
+- name: Install Docker Module for Python
+  pip:
+    name: docker
+
+- name: Install Docker Compose
+  get_url:
+    url: https://github.com/docker/compose/releases/download/1.29.2/docker-compose-Linux-x86_64
+    dest: /usr/local/bin/docker-compose
+    mode: '0755'
+
+- name: Ensure Docker service is running
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add user to docker group
+  user:
+    name: "{{ ansible_user }}"
+    groups: docker
+    append: yes
+

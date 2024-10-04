@@ -1,0 +1,87 @@
+---
+- hosts: synapse
+  become: yes
+  vars_files:
+    - vars/main.yml
+    - vars/secrets.yml
+    - vars/override.yml
+
+  pre_tasks:
+    - name: Check if systemd-resolved is available
+      command: systemctl is-active systemd-resolved
+      register: systemd_resolved_check
+      failed_when: false
+      changed_when: false
+
+    - name: Determine DNS configuration method
+      set_fact:
+        use_systemd_resolved: "{{ systemd_resolved_check.rc == 0 }}"
+
+
+    - name: Configure DNS servers (systemd)
+      block:
+        - name: Set DNS servers in resolved.conf
+          template:
+            src: resolved.conf.j2
+            dest: /etc/systemd/resolved.conf
+            mode: '0644'
+          notify: Restart systemd-resolved
+
+        - name: Ensure systemd-resolved is enabled and started
+          systemd:
+            name: systemd-resolved
+            enabled: yes
+            state: started
+      when: use_systemd_resolved
+
+
+    - name: Configure DNS servers (NetworkManager)
+      block:
+        - name: Configure DNS servers in NetworkManager
+          nmcli:
+            conn_name: "{{ item }}"
+            type: ethernet
+            state: present
+            dns4:
+              - 1.1.1.1
+              - 1.0.0.1
+          loop: "{{ ansible_interfaces | select('match', '^eth|^en') | list }}"
+          register: nm_result
+          changed_when: nm_result.stdout is defined and nm_result.stdout != ""
+
+        - name: Restart NetworkManager
+          systemd:
+            name: NetworkManager
+            state: restarted
+          when: nm_result.changed
+
+        - name: Update resolv.conf
+          command: nmcli general reload
+          when: nm_result.changed
+
+      when: ansible_distribution == 'AlmaLinux'
+
+
+    - name: Install Python 3 (RedHat)
+      raw: dnf install -y python3
+      when: ansible_os_family == "RedHat"
+    - name: Install Python 3 (Debian)
+      raw: apt-get update && apt-get install -y python3
+      when: ansible_os_family == "Debian"
+
+  handlers:
+    - name: Restart systemd-resolved
+      systemd:
+        name: systemd-resolved
+        state: restarted
+      when: use_systemd_resolved
+    - name: Reload Caddy
+      ansible.builtin.systemd:
+        name: caddy
+        state: reloaded
+
+  roles:
+    - docker
+    - caddy
+    # - synapse
+

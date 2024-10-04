@@ -1,0 +1,14 @@
+---
+- name: Ensure Synapse configuration directory exists
+  file:
+    path: /docker/synapse/files
+    state: directory
+    mode: '0755'
+
+- name: Template homeserver.yaml
+  template:
+    src: homeserver.yaml.j2
+    dest: /docker/synapse/files/homeserver.yaml
+    mode: '0644'
+  notify: Restart Synapse
+

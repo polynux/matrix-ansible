@@ -1,0 +1,15 @@
+{{ matrix_domain }} {
+    header Content-Type application/json
+    respond /.well-known/matrix/client 200 {
+      body "{\"m.client\": \"{{ matrix_domain }}:443\"}"
+      close
+    }
+    header Content-Type application/json
+    respond /.well-known/matrix/server 200 {
+      body "{\"m.server\": \"{{ matrix_domain }}:443\"}"
+      close
+    }
+    reverse_proxy /_matrix/* http://localhost:8448
+    reverse_proxy /_synapse/* http://localhost:8448
+    reverse_proxy localhost:8019
+}
